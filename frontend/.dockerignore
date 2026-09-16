@@ -1,0 +1,28 @@
+# Node.js dependencies (will be installed fresh inside container)
+node_modules/
+
+# Build output (generated inside container)
+dist/
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test outputs
+playwright-report/
+test-results/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*

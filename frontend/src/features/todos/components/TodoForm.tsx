@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,23 @@ export function TodoForm({ mode, todo, open, onClose }: TodoFormProps) {
       description: todo?.description || "",
     },
   });
+
+  // Bug fix: Reset form values whenever the `todo` prop changes.
+  // Previously defaultValues were only computed once on component mount,
+  // so opening edit for a different todo would still show the first todo's data.
+  useEffect(() => {
+    if (mode === "edit" && todo) {
+      reset({
+        title: todo.title,
+        description: todo.description || "",
+      });
+    } else if (mode === "create") {
+      reset({
+        title: "",
+        description: "",
+      });
+    }
+  }, [todo, mode, reset]);
 
   const onSubmit = (data: TodoFormData) => {
     if (mode === "create") {

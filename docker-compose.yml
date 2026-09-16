@@ -9,11 +9,30 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # Bug fix (Tier 3B): Added healthcheck so backend waits for postgres to
+    # be fully ready before starting. Without this, backend crashes on cold boot
+    # because postgres hasn't finished initialization.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fabbi -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
     ports:
       - "6379:6379"
+    # Security improvement: require password authentication for Redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secret}
+    # Bug fix (Tier 3B): Added healthcheck so backend waits for redis to be
+    # ready before starting.
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   backend:
     build:
@@ -23,14 +42,18 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://fabbi:fabbi_secret@postgres:5432/postgres
-      REDIS_URL: redis://redis:6379/0
-      JWT_SECRET: super-secret-key-change-in-production
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-super-secret-key-change-in-production}
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       REFRESH_TOKEN_EXPIRE_DAYS: 7
+    # Bug fix (Tier 3B): Use condition: service_healthy so backend only starts
+    # after postgres and redis are confirmed healthy, preventing startup crashes.
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build:

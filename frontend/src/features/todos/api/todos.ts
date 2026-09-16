@@ -32,12 +32,25 @@ interface UpdateTodoRequest {
 }
 
 
-export function useTodos(page: number = 1, size: number = 10000) {
+export interface TodoFiltersParams {
+  page?: number;
+  size?: number;
+  status?: string;
+  tag_id?: string;
+  keyword?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export function useTodos(params: TodoFiltersParams = {}) {
+  const { page = 1, size = 10000, status, tag_id, keyword, date_from, date_to } = params;
   return useQuery({
-    queryKey: ["todos"],
+    // Bug fix: Include all filter params in query key so different filter
+    // combinations have separate cache entries.
+    queryKey: ["todos", page, size, status, tag_id, keyword, date_from, date_to],
     queryFn: async (): Promise<TodoListResponse> => {
       const response = await api.get("/todos", {
-        params: { page, size },
+        params: { page, size, status, tag_id, keyword, date_from, date_to },
       });
       return response.data;
     },
@@ -51,7 +64,8 @@ export function useCreateTodo() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      // Invalidate all todo queries (any page/size combination)
+      queryClient.invalidateQueries({ queryKey: ["todos"], exact: false });
       toast.success("Todo created successfully!");
     },
     onError: () => {
@@ -74,8 +88,8 @@ export function useUpdateTodo() {
       return response.data;
     },
     onMutate: async ({ id, data }) => {
-      // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: ["todos"] });
+      // Cancel outgoing queries (all page/size variants)
+      await queryClient.cancelQueries({ queryKey: ["todos"], exact: false });
 
       // Snapshot previous value
       const previousTodos = queryClient.getQueryData<TodoListResponse>(["todos"]);
@@ -96,7 +110,7 @@ export function useUpdateTodo() {
       toast.error("Failed to update todo");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      queryClient.invalidateQueries({ queryKey: ["todos"], exact: false });
     },
   });
 }
@@ -107,7 +121,7 @@ export function useDeleteTodo() {
       await api.delete(`/todos/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      queryClient.invalidateQueries({ queryKey: ["todos"], exact: false });
       toast.success("Todo deleted successfully!");
     },
     onError: () => {

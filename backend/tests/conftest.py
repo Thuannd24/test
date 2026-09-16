@@ -56,6 +56,15 @@ def override_get_redis():
     mock_redis.get = AsyncMock(return_value=None)
     mock_redis.set = AsyncMock()
     mock_redis.delete = AsyncMock()
+    mock_redis.exists = AsyncMock(return_value=0)
+
+    # Mock the underlying redis client used for scan/delete in _invalidate_user_todo_cache
+    mock_client = MagicMock()
+    # scan returns (cursor=0, keys=[]) to terminate the while loop immediately
+    mock_client.scan = AsyncMock(return_value=(0, []))
+    mock_client.delete = AsyncMock()
+    mock_redis.client = mock_client
+
     return mock_redis
 
 

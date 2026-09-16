@@ -9,6 +9,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.todo import Todo
+    from app.models.tag import Tag
 
 
 class User(Base):
@@ -36,6 +37,12 @@ class User(Base):
         "Todo",
         back_populates="user",
         lazy="select",
+    )
+    tags: Mapped[list["Tag"]] = relationship(  # noqa: F821
+        "Tag",
+        back_populates="user",
+        lazy="select",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

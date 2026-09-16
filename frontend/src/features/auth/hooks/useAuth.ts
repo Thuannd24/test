@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useLogout, fetchCurrentUser } from "../api/auth";
+import { queryClient } from "@/lib/queryClient";
 
 export function useAuth() {
   const navigate = useNavigate();
@@ -23,12 +24,18 @@ export function useAuth() {
   const logout = () => {
     logoutMutation.mutate(undefined, {
       onSuccess: () => {
+        // Bug fix: Clear ALL React Query in-memory cache on logout.
+        // Previously only localStorage tokens were removed, meaning the
+        // next user to log in on the same tab would still see the previous
+        // user's todos from the in-memory React Query cache.
+        queryClient.clear();
         navigate("/login");
       },
       onError: () => {
-        // Even on error, clear local tokens and redirect
+        // Even on error, clear local tokens, cache, and redirect
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
+        queryClient.clear();
         navigate("/login");
       },
     });
